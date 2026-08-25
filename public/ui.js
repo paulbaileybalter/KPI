@@ -16,7 +16,7 @@
   // State
   // ---------------------------------------------------------------------
   function defaultState(){
-    return { months: A.buildSeedMonths(), production: A.buildSeedProduction(), forecast: A.buildSeedForecast(), updatedAt: null };
+    return { months: A.buildSeedMonths(), production: A.buildSeedProduction(), forecast: A.buildSeedForecast(), exportNotes: A.buildEmptyExportNotesArray(), updatedAt: null };
   }
 
   function ensureShape(s){
@@ -43,6 +43,7 @@
         m.cats = A.FORECAST_CATEGORIES.map(function(name){ return { name:name, planned:null, sold:null }; });
       }
     });
+    A.ensureExportShape(s);
     return s;
   }
 
@@ -445,6 +446,169 @@
   }
 
   // ---------------------------------------------------------------------
+  // Export Deck (monthly Pre-Supply notes + .pptx generation)
+  // ---------------------------------------------------------------------
+  var EXPORT_FIELD_MAP = [
+    ["fldAchievements", "summaryAchievements"],
+    ["fldOpportunities", "summaryOpportunities"],
+    ["fldSummaryActions", "summaryActionsText"],
+    ["fldLookingForward", "summaryLookingForward"],
+    ["fldSafetyNotes", "safetyNotes"],
+    ["fldQualityNotes", "qualityNotes"],
+    ["fldForecastComments", "forecastComments"],
+    ["fldNextTitle", "nextMonthTitle"],
+    ["fldNextNotes", "nextMonthNotes"]
+  ];
+  var EXPORT_NUMBER_MAP = [
+    ["fldSafetyDays", "safetyDays"],
+    ["fldForecastPct", "forecastReportedPct"]
+  ];
+
+  function renderExportTab(){
+    document.getElementById("exportMonthTitle").textContent = "Pre-Supply deck notes — " + MONTHS[selectedMonth] + " 2026";
+    var notes = state.exportNotes[selectedMonth];
+
+    EXPORT_FIELD_MAP.forEach(function(pair){
+      document.getElementById(pair[0]).value = notes[pair[1]] || "";
+    });
+    EXPORT_NUMBER_MAP.forEach(function(pair){
+      var v = notes[pair[1]];
+      document.getElementById(pair[0]).value = (v === null || v === undefined) ? "" : v;
+    });
+    document.getElementById("fldVaMtd").value = notes.va.mtd === null || notes.va.mtd === undefined ? "" : notes.va.mtd;
+    document.getElementById("fldVaPm").value = notes.va.pm === null || notes.va.pm === undefined ? "" : notes.va.pm;
+    document.getElementById("fldVaYtd").value = notes.va.ytd === null || notes.va.ytd === undefined ? "" : notes.va.ytd;
+    document.getElementById("fldVaFy").value = notes.va.fyForecast === null || notes.va.fyForecast === undefined ? "" : notes.va.fyForecast;
+    document.getElementById("fldVaComments").value = notes.va.comments || "";
+    document.getElementById("fldSlobYtd").value = notes.slob.ytd === null || notes.slob.ytd === undefined ? "" : notes.slob.ytd;
+    document.getElementById("fldSlobMonth").value = notes.slob.thisMonth === null || notes.slob.thisMonth === undefined ? "" : notes.slob.thisMonth;
+    document.getElementById("fldSlobCarry").value = notes.slob.carryOver === null || notes.slob.carryOver === undefined ? "" : notes.slob.carryOver;
+    document.getElementById("fldSlobComments").value = notes.slob.comments || "";
+
+    renderActionsTable(notes);
+    renderVaTable(notes);
+  }
+
+  function renderActionsTable(notes){
+    var table = document.getElementById("actionsTable");
+    var html = '<thead><tr><th>Action</th><th>Owner</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody>';
+    notes.actions.forEach(function(row, idx){
+      html += '<tr>' +
+        '<td><input class="text-input" data-act-idx="' + idx + '" data-act-field="action" value="' + escapeAttr(row.action||"") + '"></td>' +
+        '<td><input class="text-input" style="min-width:110px" data-act-idx="' + idx + '" data-act-field="owner" value="' + escapeAttr(row.owner||"") + '"></td>' +
+        '<td><input class="text-input" style="min-width:90px" data-act-idx="' + idx + '" data-act-field="due" value="' + escapeAttr(row.due||"") + '"></td>' +
+        '<td><input class="text-input" style="min-width:100px" data-act-idx="' + idx + '" data-act-field="status" value="' + escapeAttr(row.status||"") + '"></td>' +
+        '<td><button class="row-remove" data-act-remove="' + idx + '">&times;</button></td>' +
+        '</tr>';
+    });
+    html += '</tbody>';
+    table.innerHTML = html;
+    table.querySelectorAll('[data-act-idx]').forEach(function(inp){
+      inp.addEventListener("input", function(){
+        state.exportNotes[selectedMonth].actions[Number(inp.dataset.actIdx)][inp.dataset.actField] = inp.value;
+        markDirty();
+      });
+    });
+    table.querySelectorAll('[data-act-remove]').forEach(function(btn){
+      btn.addEventListener("click", function(){
+        state.exportNotes[selectedMonth].actions.splice(Number(btn.dataset.actRemove), 1);
+        markDirty();
+        renderActionsTable(state.exportNotes[selectedMonth]);
+      });
+    });
+  }
+
+  function renderVaTable(notes){
+    var table = document.getElementById("vaTable");
+    var html = '<thead><tr><th>Initiative</th><th>Category</th><th class="num">MTD $</th><th class="num">YTD $</th><th></th></tr></thead><tbody>';
+    notes.vaInitiatives.forEach(function(row, idx){
+      html += '<tr>' +
+        '<td><input class="text-input" data-va-idx="' + idx + '" data-va-field="initiative" value="' + escapeAttr(row.initiative||"") + '"></td>' +
+        '<td><input class="text-input" style="min-width:120px" data-va-idx="' + idx + '" data-va-field="category" value="' + escapeAttr(row.category||"") + '"></td>' +
+        '<td class="num"><input class="cell-input" data-va-idx="' + idx + '" data-va-field="mtd" type="number" step="any" value="' + (row.mtd===null||row.mtd===undefined?"":row.mtd) + '"></td>' +
+        '<td class="num"><input class="cell-input" data-va-idx="' + idx + '" data-va-field="ytd" type="number" step="any" value="' + (row.ytd===null||row.ytd===undefined?"":row.ytd) + '"></td>' +
+        '<td><button class="row-remove" data-va-remove="' + idx + '">&times;</button></td>' +
+        '</tr>';
+    });
+    html += '</tbody>';
+    table.innerHTML = html;
+    table.querySelectorAll('[data-va-idx]').forEach(function(inp){
+      inp.addEventListener("input", function(){
+        var idx = Number(inp.dataset.vaIdx), field = inp.dataset.vaField;
+        var row = state.exportNotes[selectedMonth].vaInitiatives[idx];
+        row[field] = (field==="mtd"||field==="ytd") ? (inp.value===""?null:Number(inp.value)) : inp.value;
+        markDirty();
+      });
+    });
+    table.querySelectorAll('[data-va-remove]').forEach(function(btn){
+      btn.addEventListener("click", function(){
+        state.exportNotes[selectedMonth].vaInitiatives.splice(Number(btn.dataset.vaRemove), 1);
+        markDirty();
+        renderVaTable(state.exportNotes[selectedMonth]);
+      });
+    });
+  }
+
+  function wireExportFields(){
+    EXPORT_FIELD_MAP.forEach(function(pair){
+      document.getElementById(pair[0]).addEventListener("input", function(e){
+        state.exportNotes[selectedMonth][pair[1]] = e.target.value;
+        markDirty();
+      });
+    });
+    EXPORT_NUMBER_MAP.forEach(function(pair){
+      document.getElementById(pair[0]).addEventListener("input", function(e){
+        state.exportNotes[selectedMonth][pair[1]] = e.target.value === "" ? null : Number(e.target.value);
+        markDirty();
+      });
+    });
+    [["fldVaMtd","mtd"],["fldVaPm","pm"],["fldVaYtd","ytd"],["fldVaFy","fyForecast"]].forEach(function(pair){
+      document.getElementById(pair[0]).addEventListener("input", function(e){
+        state.exportNotes[selectedMonth].va[pair[1]] = e.target.value === "" ? null : Number(e.target.value);
+        markDirty();
+      });
+    });
+    document.getElementById("fldVaComments").addEventListener("input", function(e){
+      state.exportNotes[selectedMonth].va.comments = e.target.value;
+      markDirty();
+    });
+    [["fldSlobYtd","ytd"],["fldSlobMonth","thisMonth"],["fldSlobCarry","carryOver"]].forEach(function(pair){
+      document.getElementById(pair[0]).addEventListener("input", function(e){
+        state.exportNotes[selectedMonth].slob[pair[1]] = e.target.value === "" ? null : Number(e.target.value);
+        markDirty();
+      });
+    });
+    document.getElementById("fldSlobComments").addEventListener("input", function(e){
+      state.exportNotes[selectedMonth].slob.comments = e.target.value;
+      markDirty();
+    });
+    document.getElementById("btnAddAction").addEventListener("click", function(){
+      state.exportNotes[selectedMonth].actions.push({ action:"", owner:"", due:"", status:"" });
+      markDirty();
+      renderActionsTable(state.exportNotes[selectedMonth]);
+    });
+    document.getElementById("btnAddVa").addEventListener("click", function(){
+      state.exportNotes[selectedMonth].vaInitiatives.push({ initiative:"", category:"", mtd:null, ytd:null });
+      markDirty();
+      renderVaTable(state.exportNotes[selectedMonth]);
+    });
+    function doExport(btn){
+      var original = btn.textContent;
+      btn.textContent = "Building…";
+      btn.disabled = true;
+      A.buildDeck(state, selectedMonth).catch(function(e){
+        console.error(e);
+        alert("Couldn't build the deck: " + (e && e.message ? e.message : e));
+      }).finally(function(){
+        btn.textContent = original;
+        btn.disabled = false;
+      });
+    }
+    document.getElementById("btnExportDeck").addEventListener("click", function(){ doExport(this); });
+    document.getElementById("btnExportDeck2").addEventListener("click", function(){ doExport(this); });
+  }
+
+  // ---------------------------------------------------------------------
   // Trends
   // ---------------------------------------------------------------------
   var trendKpiKey = "planAttainmentPct";
@@ -617,6 +781,7 @@
     renderProduction();
     renderForecast();
     renderMonthGrid();
+    renderExportTab();
     if (document.getElementById("view-trends").classList.contains("active")) renderTrends();
   }
 
@@ -625,6 +790,7 @@
     initTabs();
     initMonthPicker();
     initTrendSelect();
+    wireExportFields();
     document.getElementById("btnCopySummary").addEventListener("click", copySummary);
     document.getElementById("btnPrint").addEventListener("click", function(){ window.print(); });
     document.getElementById("btnAddSku").addEventListener("click", addSkuRow);

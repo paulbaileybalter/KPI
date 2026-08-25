@@ -205,6 +205,16 @@
     padding:7px 9px; font-size:13px; font-family:inherit; color:var(--ink);
   }
   input.text-input:focus{border-color:var(--purple);}
+  textarea.text-area{
+    width:100%; min-height:80px; border:1.5px solid var(--line); background:#fff; border-radius:8px;
+    padding:9px 11px; font-size:13px; font-family:inherit; color:var(--ink); resize:vertical;
+  }
+  textarea.text-area:focus{border-color:var(--purple);}
+  .field-label{font-size:12px; font-weight:600; color:#8b8878; margin:0 0 6px; display:block;}
+  .field-row{margin-bottom:16px;}
+  .field-grid-2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  .field-grid-4{display:grid; grid-template-columns:repeat(4,1fr); gap:12px;}
+  @media (max-width:720px){ .field-grid-2, .field-grid-4{grid-template-columns:1fr;} }
   .row-remove{
     border:1px solid var(--line); background:#fff; color:var(--bad); border-radius:8px; width:28px; height:28px;
     display:inline-flex; align-items:center; justify-content:center; font-size:15px; line-height:1; font-weight:700;
@@ -281,6 +291,7 @@
     <div class="actions">
       <button class="btn small" id="btnCopySummary" title="Copy this month's KPI summary as text">Copy summary</button>
       <button class="btn small" id="btnPrint" title="Open a print-formatted version">Download PDF</button>
+      <button class="btn small primary" id="btnExportDeck" title="Build the Pre-Supply .pptx for the selected month">Export Deck</button>
       <form method="POST" action="/logout" style="margin:0;">
         <button class="btn small ghost" type="submit">Log out</button>
       </form>
@@ -295,6 +306,7 @@
     <button class="tab" data-tab="forecast">Forecast Accuracy</button>
     <button class="tab" data-tab="trends">Trends</button>
     <button class="tab" data-tab="history">History</button>
+    <button class="tab" data-tab="export">Export Deck</button>
   </nav>
 
   <!-- ================= DASHBOARD ================= -->
@@ -375,12 +387,76 @@
     </div>
   </section>
 
+  <!-- ================= EXPORT DECK ================= -->
+  <section class="view" id="view-export">
+    <div class="card">
+      <h2 id="exportMonthTitle">Pre-Supply deck notes</h2>
+      <p class="hint">Everything the app already knows (KPI Dash, Production Plan, Forecast Accuracy) is pulled in automatically when you export. Fill in the rest here once a month — from the meeting itself and from Asahi's FCA/VA/SLOB emails — then hit Export Deck in the header any time to regenerate the .pptx.</p>
+
+      <div class="section-title">Meeting actions</div>
+      <div style="overflow-x:auto"><table class="data" id="actionsTable"></table></div>
+      <button class="btn small" id="btnAddAction" style="margin-top:10px;">+ Add action row</button>
+
+      <div class="section-title">Executive summary</div>
+      <div class="field-grid-2">
+        <div class="field-row"><label class="field-label">Achievements</label><textarea class="text-area" id="fldAchievements" placeholder="One line per point"></textarea></div>
+        <div class="field-row"><label class="field-label">Opportunities</label><textarea class="text-area" id="fldOpportunities" placeholder="One line per point"></textarea></div>
+        <div class="field-row"><label class="field-label">Actions</label><textarea class="text-area" id="fldSummaryActions" placeholder="One line per point"></textarea></div>
+        <div class="field-row"><label class="field-label">Looking forward</label><textarea class="text-area" id="fldLookingForward" placeholder="One line per point"></textarea></div>
+      </div>
+
+      <div class="section-title">Safety &amp; wellbeing</div>
+      <div class="field-grid-2">
+        <div class="field-row"><label class="field-label">Days LTI-free</label><input class="cell-input" style="max-width:100%" type="number" id="fldSafetyDays" placeholder="e.g. 762"></div>
+        <div class="field-row"><label class="field-label">Notes</label><textarea class="text-area" id="fldSafetyNotes" placeholder="One line per point"></textarea></div>
+      </div>
+
+      <div class="section-title">Quality</div>
+      <p class="hint">Micro / Phys Chem / Sensory / Complaints figures pull in automatically from the KPI Dashboard for the selected month — this is just for commentary.</p>
+      <div class="field-row"><textarea class="text-area" id="fldQualityNotes" placeholder="One line per point"></textarea></div>
+
+      <div class="section-title">Forecast Accuracy</div>
+      <div class="field-grid-2">
+        <div class="field-row"><label class="field-label">Reported accuracy % (overrides the app's own calculation on the deck, if set)</label><input class="cell-input" style="max-width:100%" type="number" step="any" id="fldForecastPct" placeholder="e.g. 90.7"></div>
+        <div class="field-row"><label class="field-label">Comments</label><textarea class="text-area" id="fldForecastComments" placeholder="e.g. Still need ABV FCA for April"></textarea></div>
+      </div>
+
+      <div class="section-title">Value Add Program</div>
+      <div class="field-grid-4">
+        <div class="field-row"><label class="field-label">MTD $</label><input class="cell-input" style="max-width:100%" type="number" step="any" id="fldVaMtd"></div>
+        <div class="field-row"><label class="field-label">Prior month $</label><input class="cell-input" style="max-width:100%" type="number" step="any" id="fldVaPm"></div>
+        <div class="field-row"><label class="field-label">YTD $</label><input class="cell-input" style="max-width:100%" type="number" step="any" id="fldVaYtd"></div>
+        <div class="field-row"><label class="field-label">FY forecast $</label><input class="cell-input" style="max-width:100%" type="number" step="any" id="fldVaFy"></div>
+      </div>
+      <div class="field-row"><label class="field-label">Comments</label><textarea class="text-area" id="fldVaComments"></textarea></div>
+      <div style="overflow-x:auto"><table class="data" id="vaTable"></table></div>
+      <button class="btn small" id="btnAddVa" style="margin-top:10px;">+ Add initiative row</button>
+
+      <div class="section-title">SLOB</div>
+      <div class="field-grid-4">
+        <div class="field-row"><label class="field-label">YTD $</label><input class="cell-input" style="max-width:100%" type="number" step="any" id="fldSlobYtd"></div>
+        <div class="field-row"><label class="field-label">This month $</label><input class="cell-input" style="max-width:100%" type="number" step="any" id="fldSlobMonth"></div>
+        <div class="field-row"><label class="field-label">Forward-risk carry-over $</label><input class="cell-input" style="max-width:100%" type="number" step="any" id="fldSlobCarry"></div>
+        <div class="field-row"><label class="field-label">Comments</label><textarea class="text-area" id="fldSlobComments"></textarea></div>
+      </div>
+
+      <div class="section-title">Next month focus</div>
+      <div class="field-row"><label class="field-label">Title</label><input class="text-input" id="fldNextTitle" placeholder="e.g. ABV Quality Month — August"></div>
+      <div class="field-row"><label class="field-label">Notes</label><textarea class="text-area" id="fldNextNotes" placeholder="One line per point"></textarea></div>
+
+      <button class="btn primary" id="btnExportDeck2" style="margin-top:6px;">Export Deck (.pptx)</button>
+    </div>
+  </section>
+
   <footer>Balter Brewing &middot; KPI Dashboard &middot; data syncs across every signed-in device</footer>
 </div>
 
+<script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 <script src="app.js"></script>
 <script src="calc.js"></script>
 <script src="other-tools.js"></script>
+<script src="export-data.js"></script>
+<script src="pptx-export.js"></script>
 <script src="ui.js"></script>
 </body>
 </html>
