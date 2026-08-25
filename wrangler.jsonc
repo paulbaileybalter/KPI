@@ -1,0 +1,29 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Rename this to whatever you want the Cloudflare Worker project to be called.
+  "name": "kpi",
+  "main": "src/worker.js",
+  // Bump this to today's date if you fork/reuse this config later.
+  "compatibility_date": "2026-08-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    // Unconditionally invoke the Worker for every request (including static
+    // files) so the session-cookie check always runs before anything is served.
+    "run_worker_first": true
+  },
+  "kv_namespaces": [
+    {
+      // Binding name used in src/worker.js as env.KPI_KV.
+      "binding": "KPI_KV",
+      // Replace with the real id after running:
+      //   npx wrangler kv namespace create KPI_KV
+      "id": "657d05cde0db4fe180c0ee473ee3fee4"
+    }
+  ],
+  "observability": {
+    "logs": {
+      "enabled": true
+    }
+  }
+}
