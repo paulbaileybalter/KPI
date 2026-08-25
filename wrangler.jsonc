@@ -18,7 +18,7 @@
       "binding": "KPI_KV",
       // Replace with the real id after running:
       //   npx wrangler kv namespace create KPI_KV
-      "id": "R657d05cde0db4fe180c0ee473ee3fee4"
+      "id": "657d05cde0db4fe180c0ee473ee3fee4"
     }
   ],
   "observability": {
