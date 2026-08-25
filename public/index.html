@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KPI Dashboard — Balter Brewing</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#47D7AC">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="KPI Dashboard">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --teal:#47D7AC;
+    --orange:#FDAA63;
+    --purple:#7566A0;
+    --sky:#99D6EA;
+    --ink:#0B0B0C;
+    --pale:#F1EB9C;
+    --gold:#FFD637;
+    --paper:#FFFFFF;
+    --line:#E7E5DE;
+    --wash:#FAFAF7;
+    --good:#2FA86B;
+    --bad:#C4553C;
+    --shadow: 0 1px 2px rgba(11,11,12,.04), 0 6px 16px rgba(11,11,12,.05);
+    --radius: 14px;
+    --font-display:'Lexend', system-ui, sans-serif;
+    --font-body:'Lexend', system-ui, sans-serif;
+    --font-mono:'IBM Plex Mono', ui-monospace, monospace;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(1200px 500px at 100% -10%, rgba(153,214,234,.25), transparent 60%),
+      radial-gradient(900px 400px at -10% 110%, rgba(255,214,55,.18), transparent 55%),
+      var(--paper);
+    color:var(--ink);
+    font-family:var(--font-body);
+  }
+  ::selection{background:var(--teal); color:#fff;}
+  button{font-family:inherit; cursor:pointer;}
+  textarea, input, select{font-family:inherit;}
+  a{color:inherit;}
+
+  /* ---------- Bubble decoration ---------- */
+  .bubbles{position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden;}
+  .bubbles span{
+    position:absolute; bottom:-40px; border-radius:50%;
+    background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.9), rgba(71,215,172,.12));
+    border:1px solid rgba(71,215,172,.25);
+    animation:rise linear infinite;
+  }
+  @keyframes rise{
+    0%{transform:translateY(0) scale(1); opacity:0;}
+    10%{opacity:.6;}
+    100%{transform:translateY(-115vh) scale(1.15); opacity:0;}
+  }
+  @media (prefers-reduced-motion: reduce){ .bubbles{display:none;} }
+
+  /* ---------- Page wrapper ---------- */
+  .page{position:relative; z-index:1; max-width:1400px; margin:0 auto; padding:0 22px 60px;}
+
+  /* ---------- Header ---------- */
+  header{
+    position:sticky; top:0; z-index:10;
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap; row-gap:10px;
+    padding:14px 0 12px;
+    background:rgba(250,250,247,.9);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .logo{width:40px; height:40px; flex:0 0 auto;}
+  .logo svg{width:100%; height:100%; display:block;}
+  .brand{display:flex; flex-direction:column; line-height:1.05;}
+  .brand .kicker{
+    font-family:var(--font-mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--purple); font-weight:600;
+  }
+  .brand h1{
+    font-family:var(--font-display); font-size:22px; margin:2px 0 0; font-weight:700; letter-spacing:-.01em;
+  }
+  header .spacer{flex:1;}
+  .pill{
+    display:inline-flex; align-items:center; gap:7px;
+    font-family:var(--font-mono); font-size:11.5px; font-weight:600;
+    padding:7px 12px; border-radius:999px; border:1px solid var(--line);
+    background:var(--wash); white-space:nowrap;
+  }
+  .dot{width:7px; height:7px; border-radius:50%; background:#C9C6BB; flex:0 0 auto;}
+  .dot.live{background:var(--teal); box-shadow:0 0 0 3px rgba(71,215,172,.22);}
+  .dot.local{background:var(--gold); box-shadow:0 0 0 3px rgba(255,214,55,.22);}
+  .btn{
+    display:inline-flex; align-items:center; gap:7px;
+    border:1px solid var(--line); background:#fff; color:var(--ink);
+    padding:8px 14px; border-radius:10px; font-size:13px; font-weight:600;
+    transition:transform .12s ease, border-color .12s ease, background .12s ease;
+  }
+  .btn:hover{border-color:var(--purple); transform:translateY(-1px);}
+  .btn:active{transform:translateY(0);}
+  .btn:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible{
+    outline:2px solid var(--purple); outline-offset:2px;
+  }
+  .btn.primary{background:var(--ink); color:#fff; border-color:var(--ink);}
+  .btn.primary:hover{background:var(--purple); border-color:var(--purple);}
+  .btn.ghost{background:transparent;}
+  .btn.small{padding:6px 10px; font-size:12px;}
+  .btn svg{width:15px; height:15px; flex:0 0 auto;}
+  header .actions{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-left:8px;}
+  select.monthpick{
+    border:1px solid var(--line); background:#fff; border-radius:10px; padding:8px 12px;
+    font-size:13px; font-weight:600; font-family:inherit; color:var(--ink);
+  }
+
+  /* ---------- Tabs ---------- */
+  .tabs{
+    display:flex; gap:6px; flex-wrap:wrap; padding:16px 0 4px; position:relative; z-index:1;
+  }
+  .tab{
+    padding:9px 15px; border-radius:10px; font-size:13.5px; font-weight:600; color:#7a776c;
+    border:1px solid transparent; background:transparent; white-space:nowrap;
+  }
+  .tab:hover{color:var(--ink); background:var(--wash);}
+  .tab.active{background:var(--ink); color:#fff;}
+  .view{display:none; padding-top:14px;}
+  .view.active{display:block;}
+
+  /* ---------- Cards ---------- */
+  .card{
+    background:#fff; border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:18px 20px;
+  }
+  .card + .card{margin-top:16px;}
+  .card h2{font-family:var(--font-display); font-size:16px; margin:0 0 3px; font-weight:700;}
+  .card .hint{font-size:12.5px; color:#8b8878; margin:0 0 14px;}
+  .section-title{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--purple); font-weight:600; margin:22px 0 10px; display:flex; align-items:center; gap:8px;
+  }
+  .section-title:first-child{margin-top:0;}
+  .section-title .n{color:#a9a695; font-weight:500;}
+
+  /* ---------- KPI summary cards ---------- */
+  .kpi-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:12px; margin-bottom:16px;}
+  .kpi-card{
+    background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 16px;
+    box-shadow:var(--shadow);
+  }
+  .kpi-card .lbl{font-size:11.5px; color:#8b8878; font-weight:600; text-transform:uppercase; letter-spacing:.04em;}
+  .kpi-card .val{font-family:var(--font-display); font-size:24px; font-weight:700; margin-top:4px;}
+  .kpi-card .cmp{font-family:var(--font-mono); font-size:11.5px; margin-top:4px; display:flex; align-items:center; gap:5px;}
+  .kpi-card .cmp.good{color:var(--good);}
+  .kpi-card .cmp.bad{color:var(--bad);}
+  .kpi-card .cmp.neutral{color:#a9a695;}
+
+  /* ---------- Tables ---------- */
+  table.data{width:100%; border-collapse:collapse; font-size:13.5px;}
+  table.data th{
+    text-align:left; font-family:var(--font-mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase;
+    color:#8b8878; font-weight:600; padding:8px 10px; border-bottom:1.5px solid var(--line);
+  }
+  table.data td{padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:middle;}
+  table.data tr:last-child td{border-bottom:none;}
+  table.data tr:hover td{background:var(--wash);}
+  table.data td.num, table.data th.num{text-align:right; font-family:var(--font-mono);}
+  .owner-tag{
+    display:inline-flex; align-items:center; font-family:var(--font-mono); font-size:10.5px; font-weight:600;
+    padding:2px 8px; border-radius:999px; background:var(--wash); border:1px solid var(--line); color:var(--purple);
+  }
+  .kpi-name{font-weight:600;}
+  .kpi-type{font-size:11px; color:#a9a695; display:block;}
+  .unit{font-size:11px; color:#a9a695;}
+  .status-tag{
+    display:inline-flex; align-items:center; gap:5px; font-family:var(--font-mono); font-size:11px; font-weight:700;
+    padding:3px 9px; border-radius:999px;
+  }
+  .status-tag.good{background:rgba(47,168,107,.12); color:var(--good);}
+  .status-tag.bad{background:rgba(196,85,60,.12); color:var(--bad);}
+  .status-tag.neutral{background:var(--wash); color:#8b8878; border:1px solid var(--line);}
+
+  input.cell-input{
+    width:100%; max-width:130px; border:1.5px solid var(--gold); background:#FFFDEF; border-radius:8px;
+    padding:7px 9px; font-size:13.5px; font-family:var(--font-mono); color:var(--ink);
+  }
+  input.cell-input:focus{border-color:var(--purple); background:#fff;}
+  input.cell-input::placeholder{color:#c9c6bb;}
+  input.cell-input.filled{background:#fff; border-color:var(--line);}
+  input.cell-input.filled:focus{border-color:var(--purple);}
+  .legend-note{
+    display:flex; align-items:center; gap:8px; font-size:12px; color:#8b8878; margin:2px 0 16px;
+  }
+  .legend-swatch{width:13px; height:13px; border-radius:4px; background:#FFFDEF; border:1.5px solid var(--gold); flex:0 0 auto;}
+  input.text-input{
+    width:100%; min-width:160px; border:1.5px solid var(--line); background:#fff; border-radius:8px;
+    padding:7px 9px; font-size:13px; font-family:inherit; color:var(--ink);
+  }
+  input.text-input:focus{border-color:var(--purple);}
+  .row-remove{
+    border:1px solid var(--line); background:#fff; color:var(--bad); border-radius:8px; width:28px; height:28px;
+    display:inline-flex; align-items:center; justify-content:center; font-size:15px; line-height:1; font-weight:700;
+  }
+  .row-remove:hover{border-color:var(--bad); background:rgba(196,85,60,.08);}
+  tr.total-row td{font-weight:700; border-top:1.5px solid var(--line); background:var(--wash);}
+
+  /* ---------- Trend chart ---------- */
+  .chart-wrap{width:100%; overflow-x:auto;}
+  svg.chart{display:block; width:100%; height:auto; min-width:560px;}
+  .axis-label{font-family:var(--font-mono); font-size:10px; fill:#a9a695;}
+  .grid-line{stroke:var(--line); stroke-width:1;}
+  .trend-line{fill:none; stroke:var(--teal); stroke-width:2.5;}
+  .target-line{fill:none; stroke:var(--purple); stroke-width:1.6; stroke-dasharray:5 4;}
+  .trend-dot{fill:var(--teal); stroke:#fff; stroke-width:1.5;}
+  .chart-legend{display:flex; gap:18px; margin-top:10px; flex-wrap:wrap;}
+  .chart-legend .item{display:flex; align-items:center; gap:6px; font-size:12px; color:#8b8878;}
+  .chart-legend .swatch{width:16px; height:3px; border-radius:2px;}
+
+  select.kpi-select{
+    border:1px solid var(--line); background:#fff; border-radius:10px; padding:9px 12px;
+    font-size:13.5px; font-weight:600; font-family:inherit; color:var(--ink); margin-bottom:16px; min-width:260px;
+  }
+
+  /* ---------- Month history grid ---------- */
+  .month-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:10px;}
+  .month-tile{
+    border:1px solid var(--line); border-radius:12px; padding:12px 14px; background:#fff; text-align:left;
+    transition:transform .12s ease, border-color .12s ease;
+  }
+  .month-tile:hover{border-color:var(--purple); transform:translateY(-1px);}
+  .month-tile.selected{border-color:var(--teal); box-shadow:0 0 0 2px rgba(71,215,172,.25);}
+  .month-tile .m{font-family:var(--font-display); font-weight:700; font-size:15px;}
+  .month-tile .status{font-size:11.5px; color:#8b8878; margin-top:4px;}
+  .month-tile .fill-bar{height:5px; border-radius:3px; background:var(--wash); margin-top:8px; overflow:hidden;}
+  .month-tile .fill-bar i{display:block; height:100%; background:var(--teal);}
+
+  footer{text-align:center; padding:30px 0 10px; font-size:11.5px; color:#a9a695; font-family:var(--font-mono);}
+
+  @media (max-width: 640px){
+    .brand h1{font-size:18px;}
+    header .actions{margin-left:0;}
+    .kpi-grid{grid-template-columns:repeat(auto-fill, minmax(150px,1fr));}
+  }
+
+  @media print{
+    .bubbles, header .actions, header #syncPill, .tabs, footer{display:none !important;}
+    header{position:static;}
+    .view{display:none !important;}
+    .view.active{display:block !important;}
+    body{background:#fff;}
+    .card{box-shadow:none; break-inside:avoid;}
+  }
+</style>
+</head>
+<body>
+<div class="bubbles" id="bubbles"></div>
+<div class="page">
+
+  <header>
+    <div class="logo">
+      <svg viewBox="0 0 161 161" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#47D7AC" d="M136.3,70.4l-9.4-9.4c-1.6-1.6-4.3-1.6-6,0-1.6,1.6-1.6,4.3,0,6l2.3,2.3c-9.6,13.2-25.2,21.7-42.7,21.7s-33.1-8.6-42.7-21.8l2.3-2.3c1.6-1.6,1.6-4.3,0-6-1.6-1.6-4.3-1.6-6,0l-9.4,9.4c-1.6,1.6-1.6,4.3,0,6,.8.8,1.9,1.2,3,1.2s2.2-.4,3-1.2l1.1-1.1c11.2,14.7,28.9,24.2,48.7,24.2s37.5-9.5,48.7-24.2l1.1,1.1c.8.8,1.9,1.2,3,1.2s2.2-.4,3-1.2c1.6-1.6,1.6-4.3,0-6"/>
+        <path fill="#47D7AC" d="M152.5,8.5v144H8.5V8.5h144M161,0H0v161h161V0h0Z"/>
+      </svg>
+    </div>
+    <div class="brand">
+      <span class="kicker">Balter Brewing</span>
+      <h1>KPI Dashboard</h1>
+    </div>
+    <div class="spacer"></div>
+    <select class="monthpick" id="monthPicker" aria-label="Select month"></select>
+    <span class="pill" id="syncPill"><span class="dot" id="syncDot"></span><span id="syncLabel">Connecting…</span></span>
+    <div class="actions">
+      <button class="btn small" id="btnCopySummary" title="Copy this month's KPI summary as text">Copy summary</button>
+      <button class="btn small" id="btnPrint" title="Open a print-formatted version">Download PDF</button>
+      <form method="POST" action="/logout" style="margin:0;">
+        <button class="btn small ghost" type="submit">Log out</button>
+      </form>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-tab="dashboard">Dashboard</button>
+    <button class="tab" data-tab="entry">Data Entry</button>
+    <button class="tab" data-tab="complaints">Complaints</button>
+    <button class="tab" data-tab="production">Production Plan</button>
+    <button class="tab" data-tab="forecast">Forecast Accuracy</button>
+    <button class="tab" data-tab="trends">Trends</button>
+    <button class="tab" data-tab="history">History</button>
+  </nav>
+
+  <!-- ================= DASHBOARD ================= -->
+  <section class="view active" id="view-dashboard">
+    <div class="kpi-grid" id="heroCards"></div>
+    <div class="card">
+      <h2 id="dashMonthTitle">Month KPI vs Target</h2>
+      <p class="hint">Actual vs target for the selected month, with year-to-date alongside. YTD is the running average of monthly actuals from January through the selected month.</p>
+      <div id="dashTables"></div>
+    </div>
+  </section>
+
+  <!-- ================= DATA ENTRY ================= -->
+  <section class="view" id="view-entry">
+    <div class="card">
+      <h2 id="entryMonthTitle">Enter raw data</h2>
+      <p class="hint">Each department enters its own numbers for the selected month. Values save automatically and sync to every device signed in.</p>
+      <div class="legend-note"><span class="legend-swatch"></span> Editable cell for the selected month</div>
+      <div id="entryGroups"></div>
+    </div>
+  </section>
+
+  <!-- ================= COMPLAINTS ================= -->
+  <section class="view" id="view-complaints">
+    <div class="card">
+      <h2 id="ccMonthTitle">Consumer complaints</h2>
+      <p class="hint">Cans and draught complaints and units produced for the selected month, feeding the complaint-ratio KPIs. Last-year figures are fixed reference values imported from the old spreadsheet.</p>
+      <div id="ccCurrent"></div>
+    </div>
+    <div class="card">
+      <h2>Last year reference (fixed)</h2>
+      <p class="hint">Read-only — this is the prior-year baseline the % change KPIs are measured against.</p>
+      <div id="ccLastYear"></div>
+    </div>
+  </section>
+
+  <!-- ================= PRODUCTION PLAN ATTAINMENT ================= -->
+  <section class="view" id="view-production">
+    <div class="kpi-grid" id="prodHero"></div>
+    <div class="card">
+      <h2 id="prodMonthTitle">SKUs</h2>
+      <p class="hint">One row per SKU, pulled from NetSuite each month. Add or remove rows as the SKU list changes — Attainment, Diff, and the month's overall Plan Attainment recalculate as you type.</p>
+      <div style="overflow-x:auto"><table class="data" id="prodTable"></table></div>
+      <button class="btn small" id="btnAddSku" style="margin-top:12px;">+ Add SKU row</button>
+    </div>
+  </section>
+
+  <!-- ================= FORECAST ACCURACY ================= -->
+  <section class="view" id="view-forecast">
+    <div class="kpi-grid" id="foreHero"></div>
+    <div class="card">
+      <h2 id="foreMonthTitle">Planned vs Sold by category</h2>
+      <p class="hint">Litres is tracked separately from NetSuite; the category rows below (cases/kegs/bottles, in their own units) drive the headline Forecast Accuracy for the month.</p>
+      <div style="overflow-x:auto"><table class="data" id="foreTable"></table></div>
+    </div>
+  </section>
+
+  <!-- ================= TRENDS ================= -->
+  <section class="view" id="view-trends">
+    <div class="card">
+      <h2>KPI trend</h2>
+      <p class="hint">Actual vs target across the year for a single KPI.</p>
+      <select class="kpi-select" id="trendKpiSelect"></select>
+      <div class="chart-wrap"><svg class="chart" id="trendChart" viewBox="0 0 900 340" preserveAspectRatio="xMidYMid meet"></svg></div>
+      <div class="chart-legend">
+        <span class="item"><span class="swatch" style="background:var(--teal)"></span> Actual</span>
+        <span class="item"><span class="swatch" style="background:var(--purple); opacity:.7"></span> Target</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= HISTORY ================= -->
+  <section class="view" id="view-history">
+    <div class="card">
+      <h2>Months</h2>
+      <p class="hint">Click any month to open it in Data Entry / Complaints and adjust figures — useful when a number changes after the fact.</p>
+      <div class="month-grid" id="monthGrid"></div>
+    </div>
+  </section>
+
+  <footer>Balter Brewing &middot; KPI Dashboard &middot; data syncs across every signed-in device</footer>
+</div>
+
+<script src="app.js"></script>
+<script src="calc.js"></script>
+<script src="other-tools.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>
